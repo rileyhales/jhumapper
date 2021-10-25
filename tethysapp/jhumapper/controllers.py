@@ -89,10 +89,14 @@ def query_values(request):
                 new_col_name = col.replace('_shape', '')
                 ts[new_col_name] = ts[col]
                 del ts[col]
-    # elif 'AdminDist' in data.keys():
-    #     shppath = os.path.join(workspace_path, 'gadm36_levels_shp', 'gadm36_1.shp')
-    #     ts = ts.shape(shppath, behavior='feature', label_attr='GID_1', feature=data['AdminDist'])
-    #     ts = ts[[data['AdminDist'], ]]
+    elif 'shape' in data.keys():
+        shppath = os.path.join(workspace_path, 'gadm_clipped', 'gadm-level1-clipped.gpkg')
+        ts = ts.shape(shppath, behavior='feature', label_attr='GID_1', feature=data['shape'][0])
+        for col in ts.columns:
+            if f'_{data["shape"][0]}' in col:
+                new_col_name = col.replace(f'_{data["shape"][0]}', '')
+                ts[new_col_name] = ts[col]
+                del ts[col]
     else:
         raise ValueError('Unrecognized query request')
 

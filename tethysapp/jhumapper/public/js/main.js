@@ -78,7 +78,18 @@ const addWMS = function () {
     layerControl.addOverlay(layerShigella, "Shigella Layer")
     legend.addTo(map);
 };
-let user_shapefile = L.geoJSON(false);
+
+function onEachFeature(feature, layer) {
+    layer.bindPopup(`<button class="btn btn-primary" onclick="fetchPlotData({shape: '${feature.properties.GID_1}'})">Get plots for this region (${feature.properties.GID_1})</button>`)
+}
+
+const geojsonStyle = {
+    "color": "#ffca94",
+    "weight": 4,
+    "opacity": 0.5
+}
+let user_shapefile = L.geoJSON(false, {onEachFeature: onEachFeature, style: geojsonStyle});
+layerControl.addOverlay(user_shapefile, "GADM World Admin boundaries")
 const getGeoServerGJ = () => {
     const gsURL = "https://geoserver.hydroshare.org/geoserver/HS-bbaf9b8d1dbd43659afe7befaaa6f2ce/ows"
     let parameters = L.Util.getParamString(
@@ -87,7 +98,7 @@ const getGeoServerGJ = () => {
             version: '1.0.0',
             request: 'GetFeature',
             typeName: 'HS-bbaf9b8d1dbd43659afe7befaaa6f2ce:gadm36_1',
-            maxFeatures: 1000,
+            maxFeatures: 10000,
             outputFormat: 'application/json',
             parseResponse: 'getJson',
             srsName: 'EPSG:4326',
@@ -102,18 +113,25 @@ const getGeoServerGJ = () => {
         success: (data) => {
             user_shapefile.clearLayers();
             user_shapefile.addData(data).addTo(map);
-            mapObj.flyToBounds(user_shapefile.getBounds());
-            layerControl.addOverlay(user_shapefile, "GADM World Admin boundaries")
+            map.flyToBounds(user_shapefile.getBounds());
         },
     });
 }
-// getGeoServerGJ()
-
+getGeoServerGJ()
 $("#select-layers").change(() => {
     addWMS()
 })
-
 addWMS();
+
+const fetchPlotData = (data) => {
+    console.log(data)
+    $("#chart_modal").modal("show")
+    fetch(`${URL_QUERYVALUES}?${new URLSearchParams(data).toString()}`)
+        .then(res => res.json())
+        .then(res => {
+            plotlyTimeseries(res)
+        })
+}
 
 map.addControl(drawControl);
 map.on("draw:drawstart", function (event) {
@@ -134,23 +152,7 @@ map.on("draw:created", function (event) {
     } else if (event.layerType === "polygon") {
         data.polygon = JSON.stringify(layerDraw.toGeoJSON())  // geojson object
     }
-
-    $("#chart_modal").modal("show")
-    fetch(`${URL_QUERYVALUES}?${new URLSearchParams(data).toString()}`)
-        .then(res => res.json())
-        .then(res => {
-            console.log(res)
-            plotlyTimeseries(res)
-        })
-    // $.ajax({
-    //     method: 'GET',
-    //     url: URL_QUERYVALUES,
-    //     data: querydata,
-    //     success: function (result) {
-    //         $("#chart_modal").modal("show");
-    //         plotlyTimeseries(result)
-    //     },
-    // })
+    fetchPlotData(data)
 });
 
 
